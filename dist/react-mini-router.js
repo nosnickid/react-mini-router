@@ -47,7 +47,7 @@ module.exports = {
     },
 
     componentWillMount: function() {
-        this.setState({ _routes: processRoutes(this.state.root, this.routes, this) });
+        this.setState({ _routes: processRoutes(this.state.root, this.routes) });
     },
 
     componentDidMount: function() {
@@ -81,27 +81,7 @@ module.exports = {
 
         if (path.length === 0) path = '/';
 
-        this.setState({ path: path + url.search });
-    },
-
-    renderCurrentRoute: function() {
-        var path = this.state.path,
-            url = urllite(path),
-            queryParams = parseSearch(url.search);
-
-        var parsedPath = url.pathname;
-
-        if (!parsedPath || parsedPath.length === 0) parsedPath = '/';
-
-        var matchedRoute = this.matchRoute(parsedPath);
-
-        if (matchedRoute) {
-            return matchedRoute.handler.apply(this, matchedRoute.params.concat(queryParams));
-        } else if (this.notFound) {
-            return this.notFound(parsedPath, queryParams);
-        } else {
-            throw new Error('No route matched path: ' + parsedPath);
-        }
+        handlePath(this, path + url.search);
     },
 
     handleClick: function(evt) {
@@ -125,7 +105,7 @@ module.exports = {
                     window.location.hash = '!' + pathWithSearch;
                 }
 
-                self.setState({ path: pathWithSearch});
+                handlePath(this, pathWithSearch);
             }, 0);
         }
     },
@@ -213,16 +193,15 @@ function getHref(evt) {
     return linkURL;
 }
 
-function processRoutes(root, routes, component) {
+function processRoutes(root, routes) {
     var patterns = [],
-        path, pattern, keys, handler, handlerFn;
+        path, pattern, keys, handlerFn;
 
     for (path in routes) {
         if (routes.hasOwnProperty(path)) {
             keys = [];
             pattern = pathToRegexp(root + path, keys);
-            handler = routes[path];
-            handlerFn = component[handler];
+            handlerFn = routes[path];
 
             patterns.push({ pattern: pattern, params: keys, handler: handlerFn });
         }
@@ -247,6 +226,24 @@ function parseSearch(str) {
     return parsed;
 }
 
+function handlePath(component, path) {
+    var url = urllite(path),
+        queryParams = parseSearch(url.search);
+
+    var parsedPath = url.pathname;
+
+    if (!parsedPath || parsedPath.length === 0) parsedPath = '/';
+
+    var matchedRoute = component.matchRoute(parsedPath);
+
+    if (matchedRoute) {
+        return matchedRoute.handler.apply(null, matchedRoute.params.concat(queryParams));
+    } else if (component.state._routes.notFound) {
+        return component.state._routes.notFound(parsedPath, queryParams);
+    } else {
+        throw new Error('No route matched path: ' + parsedPath);
+    }
+}
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
 },{"./detect":3,"path-to-regexp":5,"urllite/lib/core":7}],3:[function(require,module,exports){
 var canUseDOM = !!(
